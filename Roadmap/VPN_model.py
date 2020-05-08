@@ -128,9 +128,9 @@ class TransformModule(nn.Module):
         for i in range(self.num_view):
             # weights are not shared
             fc_transform = nn.Sequential(
-                        nn.Linear(dim1* dim2, dim1*dim2), 
+                        nn.Linear(dim1* dim2, dim1*dim2*4), 
                         nn.ReLU(), 
-                        nn.Linear(dim1 * dim2, dim1*dim2),
+                        nn.Linear(dim1 * dim2*4, dim1*dim2),
                         nn.ReLU()
             )
             self.mat_list += [fc_transform]
@@ -176,3 +176,76 @@ class vpn_model(nn.Module):
         x = self.decoder([x])
 
         return x
+    
+class SpatialTransformer(nn.Module):
+
+    def __init__(self, in_channels, kernel_size):
+        '''
+        Takes input in Bx 1024 x 16 x 20
+        '''
+        super(SpatialTransformer, self).__init__()
+        self._in_ch = in_channels 
+        self._ksize = kernel_size
+
+        self.prep_warper = nn.Sequential(*[
+            nn.Conv2d(self._in_ch, 32, kernel_size=self._ksize, stride=1, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=self._ksize, stride=1, padding=1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2)
+            
+        ])
+    
+        self.warper_generator = nn.Sequential(*[
+                    nn.Linear(32*8*10, 1024), 
+                    nn.ReLU(inplace = True),
+                    nn.Linear(1024, 9),
+                    nn.Tanh()
+        ])
+
+    def forward(self, x): 
+        """
+        Forward pass of the STN module. 
+        x -> input feature map 
+        x should be the feature map for a single view
+        """
+        B, C, H, W = x.shape
+        #localization net
+        homo_mat = self.prep_warper(x)
+        # concatenate 3 dim
+        homo_mat = homo_mat.view(B, -1)
+        
+        homo_mat = self.warper_generator(homo_mat) # BV 3 X3 
+        #reshape to homo matrix
+        homo_mat = homo_mat.view(-1, 3, 3)
+        # grid sample on original view
+        warper = tgm.HomographyWarper(H, W)
+        warpped = warper(x, homo_mat)
+        return warpped
+class ComplexTransformModule(nn.Module):
+    def __init__(self, num_view=6):
+        '''
+        Takes in input B, V, C, H, W
+        '''
+        super(ComplexTransformModule, self).__init__()
+        
+        self.num_view = num_view
+
+        self.mat_list = nn.ModuleList()
+        
+        for i in range(self.num_view):
+            self.mat_list += [SpatialTransformer(1024, 3)]
+
+    def forward(self, x):
+        '''
+        Takes in B,V,C,H, W, perform warpping on each image and concatenate by position
+        '''
+        B, V, C, H, W = x.size()
+        view_comb = self.mat_list[0](x[:, 0])
+        for i in range(1, V):
+            view_comb += self.mat_list[i](x[:, i])
+            # for each view, perform the warpped view
+            #x[:, i] = self.mat_list[i](x[:, i])
+        #Concatenate the view
+        # x = position_concat_features(x)
+        return view_comb
