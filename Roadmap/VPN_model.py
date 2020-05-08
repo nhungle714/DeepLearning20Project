@@ -13,7 +13,7 @@ from helper import collate_fn, draw_box
 from torchvision import transforms, models
 
 import copy
-
+import torchgeometry.core as tgm 
 class _DecoderBlock(nn.Module):
     """
     Taken from https://github.com/zijundeng/pytorch-semantic-segmentation/blob/master/models/seg_net.py
@@ -249,3 +249,32 @@ class ComplexTransformModule(nn.Module):
         #Concatenate the view
         # x = position_concat_features(x)
         return view_comb
+
+class vpn_model_v2(nn.Module):
+    def __init__(self, encoder, decoder):
+        super(vpn_model_v2, self).__init__()
+        self.num_views = 6
+        self.encoder = encoder
+        
+        self.transform = ComplexTransformModule()
+        self.decoder = decoder
+        
+        
+    def forward(self, x, return_feat = False):
+        # flatten the output along channel: C x (HW)
+        # weights are not shared, i.e. each first view input has
+        # own VRM to get its top down view feature map 
+        # i here in range 6(MN, N=6,M=1(MODALITY))
+        # j here in range num_channels
+        # 
+        B,V,C,H,W = x.shape
+        x = x.view(B*V, C, H, W)
+        x = self.encoder(x)
+        # return to B V 
+        x = x.view([B,V] + list(x.size()[1:]))
+        
+        x =  self.transform(x) # B x c x h x w
+        
+        x = self.decoder([x])
+
+        return x
