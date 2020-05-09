@@ -77,7 +77,10 @@ with torch.no_grad():
         sample = sample.cuda()
 
         predicted_bounding_boxes = model_loader.get_bounding_boxes(sample)[0].cpu()
-        ats_bounding_boxes = compute_ats_bounding_boxes(predicted_bounding_boxes, target['bounding_box'][0])
+        try:
+            ats_bounding_boxes = compute_ats_bounding_boxes(predicted_bounding_boxes, target['bounding_box'][0])
+        except:
+            ats_bounding_boxes = 0.0
         total_ats_bounding_boxes += ats_bounding_boxes
 
         if opt.verbose:
