@@ -8,7 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import os
-from color_pretask import color_model
 
 # import your model class
 # import ...
@@ -62,14 +61,10 @@ class ModelLoader():
                                                                                  pretrained_backbone=False)
         self.bboxes_model = self.bboxes_model.to(device)
         self.bboxes_model.load_state_dict(self.bboxes_model_weights)
-
+        
         # Get feature extractor
-        self.bboxes_pretrain_model = color_model()
-        self.bboxes_pretrain_encoder = self.bboxes_pretrain_model.encoder.encoder
-        self.bboxes_pretrain_encoder = list(self.bboxes_pretrain_encoder.children())[1:]
-        self.bboxes_feature_extractor = [nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)] \
-                                    + self.bboxes_pretrain_encoder
-        self.bboxes_feature_extractor = nn.Sequential(*self.bboxes_feature_extractor)
+        self.bboxes_feature_extractor = torchvision.models.resnet18(pretrained = False)
+        self.bboxes_feature_extractor = nn.Sequential(*list(self.bboxes_feature_extractor.children())[:-3])
         self.bboxes_feature_extractor.to(device)
         self.bboxes_feature_extractor.load_state_dict(self.bboxes_feature_extractor_weights)
 
@@ -111,5 +106,3 @@ class ModelLoader():
         # You need to return a cuda tensor with size [batch_size, 800, 800] 
         
         return torch.rand(1, 800, 800) > 0.5
-
-
