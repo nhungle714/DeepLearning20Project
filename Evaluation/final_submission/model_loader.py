@@ -43,33 +43,35 @@ class ModelLoader():
     team_member = ['Nhung Hong Le', 'B V Nithish Addepalli', 'Hengyu Tang']
     contact_email = 'ht1162@nyu.edu'
 
-    def __init__(self, model_file={'get_bboxes_model': curr_dir+ '/object_detection_resnet18_0502_epoch7.pth', 
+    def __init__(self, model_file={'get_bboxes_model': curr_dir+ '/object_detection_resnet18_0509_epoch5.pth', 
                                   'get_binary_RM_model': curr_dir+'/colorization_resnet50_w_vae.pth'}):
         """
         model_file = {'get_bboxes_model': object_detection_model_path,
                       'get_binary_RM_model': None}
         """
-        
         self.bboxes_model_file =  model_file['get_bboxes_model']
+
         self.bboxes_checkpoint = torch.load(self.bboxes_model_file)
-        
         self.bboxes_feature_extractor_weights = self.bboxes_checkpoint['feature_extractor']
         self.bboxes_model_weights = self.bboxes_checkpoint['fasterRCNN']
         
-        
+
         # Initiate the feature extractor
         # Get model
-        self.bboxes_model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=False, pretrained_backbone= False)
+        self.bboxes_model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=False,
+                                                                                 pretrained_backbone=False)
         self.bboxes_model = self.bboxes_model.to(device)
         self.bboxes_model.load_state_dict(self.bboxes_model_weights)
-
+        
         # Get feature extractor
-        self.bboxes_feature_extractor = torchvision.models.resnet18(pretrained=False)
-        self.bboxes_feature_extractor = nn.Sequential(*list(self.bboxes_feature_extractor.children())[:-2])
+        self.bboxes_feature_extractor = torchvision.models.resnet18(pretrained = False)
+        self.bboxes_feature_extractor = nn.Sequential(*list(self.bboxes_feature_extractor.children())[:-3])
         self.bboxes_feature_extractor.to(device)
         self.bboxes_feature_extractor.load_state_dict(self.bboxes_feature_extractor_weights)
 
+
         self.bboxes_model.eval()
+        self.bboxes_feature_extractor.eval()
         self.bboxes_feature_extractor.eval()
 
 
@@ -103,7 +105,7 @@ class ModelLoader():
             features = self.bboxes_feature_extractor(image_tensor)
             #print(features.shape)
             features = concat_features(features)
-            features = features.view(3, 512, 160)
+            features = features.view(3, 256, 40*16)
             #print(features.shape)
             fe_batch.append(features)
 
