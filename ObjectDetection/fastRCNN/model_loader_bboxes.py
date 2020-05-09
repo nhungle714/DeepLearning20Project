@@ -30,18 +30,19 @@ def concat_features(features, dim = 2):
     #dim 2 ==> stacking the images in column dimension
     tensor_tuples = torch.unbind(features, dim=0)
     concatenated_fm = torch.cat(tensor_tuples, dim=dim)
-    return concatenated_fm 
+    return concatenated_fm
+
+cuda = torch.cuda.is_available()
+device = torch.device("cuda:0" if cuda else "cpu")
 
 class ModelLoader():
     # Fill the information for your team
-    team_name = 'AwesomeThress'
+    team_name = 'team_name'
     round_number = 1
-    team_member = ['Nhung Hong Le', 'B V Nithish Addepalli', 'Hengyu Tang']
-    contact_email = 'ht1162@nyu.edu'
-    curr_dir = os.getcwd()
+    team_member = []
+    contact_email = '@nyu.edu'
 
-    def __init__(self, model_file={'get_bboxes_model': curr_dir+ 'object_detection_resnet18_0502_epoch7.pth', 
-                                  'get_binary_RM_model':  None}):
+    def __init__(self, model_file='put_your_model_file_name_here'):
         """
         model_file = {'get_bboxes_model': object_detection_model_path,
                       'get_binary_RM_model': None}
